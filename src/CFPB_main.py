@@ -26,14 +26,13 @@ fields_to_keep = [
         'company',
         'state',
         'zip_code',
-        'consumer_consent_provided',
         'complaint_id'
         ]
 
     
 client = Socrata('data.consumerfinance.gov', APP_TOKEN)
 
-results = client.get('jhzv-w97w', where='complain_what_happened is not null', limit=200)
+results = client.get('jhzv-w97w', where='complaint_what_happened is not null', limit=200)
 results_df = pd.DataFrame.from_records(results)
 df = results_df[fields_to_keep]
 
@@ -49,12 +48,44 @@ nlp = en_core_web_sm.load()
 
 labels_of_interest = ['PERSON','ORG','PRODUCT']
 
-def NER(text):
-    ents = [(ent,ent.label_) for ent in nlp(text).ents]
-    return [e for e in ents if e[1] in labels_of_interest]
+def NER(doc):
+    ents = [(ent,ent.label_) for ent in doc.ents]
+    return [(str(e[0]),e[1]) for e in ents if e[1] == 'ORG' and len(str(e[0]).replace('X','')) > 2]
     
 df['ents'] = df.complaint_what_happened.apply(lambda text: NER(text))
 
+# Possible action plan:
+# Find relevant entities in each complaint using NER function
+# Find noun phrases in each complaint using find_np function
+# Convert to embedding vector
+# Train SVM using noun phrase embeddings as input and company as target
+# A row may have more than one inputs (treat each noun phrase as a separate sample)
+
+#%% SPACY NOUN CHUNKS
+
+doc = nlp(df['complaint_what_happened'].str.replace('X','').iloc[3])
+
+# Check:
+# more than one token in chunk
+# replace X with empty string - do this in preprocessing
+# at least one token not in stopword list
+# at least one token with high tfidf score?
+        
+def find_nc(doc):
+    for nc in doc.noun_chunks:
+        if len(nc) > 1 and not all(token.is_stop for token in nc):
+            print(nc.text)
+    return
+
+#%% CREATE A PIPELINE
+    
+# Incorporating spaCy into sklearn pipeline:
+# https://nicschrading.com/project/Intro-to-NLP-with-spaCy/
+# But I'd rather use a spacy pipeline - more efficient processing, I assume
+    
+# Use textacy, a package built off of spacy?
+# https://github.com/chartbeat-labs/textacy
+        
 #%% SENTENCE VECTORS FROM "A TOUGH TO BEAT BASELINE..."
 
 

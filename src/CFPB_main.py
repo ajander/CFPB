@@ -9,8 +9,13 @@ Date: 2017-10-01
 #%% SET-UP
 
 # Use environment simple_nlp
+
 import pandas as pd
 from sodapy import Socrata
+
+import os
+entry_point = r'/home/adrienne/Code/PythonProjects/CFPB/src'
+os.chdir(entry_point)
 
 #%% GET COMPLAINT DATA
 

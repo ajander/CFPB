@@ -37,7 +37,7 @@ fields_to_keep = [
     
 client = Socrata('data.consumerfinance.gov', APP_TOKEN)
 
-results = client.get('jhzv-w97w', where='complaint_what_happened is not null', limit=200)
+results = client.get('jhzv-w97w', where='complaint_what_happened is not null', limit=2000)
 results_df = pd.DataFrame.from_records(results)
 df = results_df[fields_to_keep]
 
@@ -110,18 +110,21 @@ from nltk import word_tokenize
 import time
 
 def preprocess(text):
-    start = time.time()
     text = text.lower()
     tokens = word_tokenize(text)
-    print("nltk: %0.3f" % (time.time()-start))
     return tokens
 
 docs = [doc2vec.TaggedDocument(
-        words=d.split(), tags=[label]) for d, label in zip(
+        words=preprocess(d), tags=[label]) for d, label in zip(
                 df['complaint_what_happened'], df['complaint_id'])]
     
-model = doc2vec.Doc2Vec(docs, size = 100, window = 300, min_count = 1, workers = 4)
+model = doc2vec.Doc2Vec(docs, size = 100, window = 8, min_count = 10, workers = 4)
 v = model.docvecs
+
+# Find similar documents
+new_doc = df.complaint_what_happened[0]
+new_vector = model.infer_vector(preprocess(new_doc))
+sims = model.docvecs.most_similar([new_vector])
 
 
 

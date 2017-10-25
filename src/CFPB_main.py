@@ -100,47 +100,49 @@ def find_nc(doc):
 
 df['nc'] = df['complaint_what_happened'].apply(lambda doc: find_nc(doc))
 
-#%% CREATE A PIPELINE
-    
-# Incorporating spaCy into sklearn pipeline:
-# https://nicschrading.com/project/Intro-to-NLP-with-spaCy/
-# But I'd rather use a spacy pipeline - more efficient processing, I assume
-    
-# Use textacy, a package built off of spacy?
-# https://github.com/chartbeat-labs/textacy
-        
-#%% SENTENCE VECTORIZATION
+#%% VECTORIZE THE TOKENS DERIVED FROM NOUN CHUNKS USING ARORA METHOD
 
-# How many sentences does a complaint usually have?
-num_sents = df.complaint_what_happened.apply(
-        lambda text: len([s for s in nlp(text).sents]))
+from sentence2vec import *
 
-#%% SENTENCE VECTORS FROM "A TOUGH TO BEAT BASELINE..."
+def create_docvec(tokens):
+    words = [Word(t, nlp(t).vector) for t in tokens]
+    docvec = Sentence(words)
+    return docvec
 
-import sentence2vec.py
+docvec_input = df['nc'].apply(lambda tokens: create_docvec(tokens))
 
-#%% DOCUMENT VECTORS FROM GENSIM
+embedding_size = 300
 
-import gensim
+# training
+df['docvec'] = sentence_to_vec(docvec_input.tolist(), embedding_size)
+# Not working...
+# "ValueError: Input contains NaN, infinity or a value too large for dtype('float64')."
+
+#%% VECTORIZE NOUN CHUNK TOKENS USING GENSIM DOC2VEC
+
+#import gensim
 from gensim.models import doc2vec
 
 import time
 
-def nltk_tokenize(text):
-    text = text.lower()
-    tokens = word_tokenize(text)
-    return tokens
-
+#def nltk_tokenize(text):
+#    text = text.lower()
+#    tokens = word_tokenize(text)
+#    return tokens
+#
+#docs = [doc2vec.TaggedDocument(
+#        words=nltk_tokenize(d), tags=[label]) for d, label in zip(
+#                df['complaint_what_happened'], df['complaint_id'])]
+    
 docs = [doc2vec.TaggedDocument(
-        words=nltk_tokenize(d), tags=[label]) for d, label in zip(
-                df['complaint_what_happened'], df['complaint_id'])]
+        words=d, tags=[label]) for d, label in zip(
+                df['nc'], df['complaint_id'])]
     
 model = doc2vec.Doc2Vec(docs, size = 100, window = 8, min_count = 10, workers = 4)
-v = model.docvecs
 
 # Find similar documents
-new_doc = df.complaint_what_happened[1]
-new_vector = model.infer_vector(preprocess(new_doc))
+new_doc = df['nc'][1]
+new_vector = model.infer_vector(new_doc)
 sims = model.docvecs.most_similar([new_vector])
 
 

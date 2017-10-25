@@ -32,3 +32,43 @@ onto.search(iri = "*Topping")
 
 # searches for all entities that are related to another one with the ‘has_topping’ relation:
 onto.search(has_topping = "*")
+
+#%% SPARQL QUERY WITH RDFLIB
+
+from SPARQLWrapper import SPARQLWrapper, JSON
+
+# Query attempt #1
+sparql = SPARQLWrapper("http://dbpedia.org/sparql")  # Goes to Virtuoso SPARQL Query Editor site
+sparql.setQuery("""
+    PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+    SELECT ?label
+    WHERE { <http://dbpedia.org/resource/Asturias> rdfs:label ?label }
+""")
+sparql.setReturnFormat(JSON)
+results = sparql.query().convert()
+
+for result in results["results"]["bindings"]:
+    print(result["label"]["value"])
+
+# Query attempt #2
+sparql.setQuery("""
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>   
+                SELECT *
+                  WHERE
+                    {
+                      ?e <http://dbpedia.org/ontology/series>         <http://dbpedia.org/resource/The_Sopranos>  .
+                      ?e <http://dbpedia.org/ontology/releaseDate>    ?date                                       .
+                      ?e <http://dbpedia.org/ontology/episodeNumber>  ?number                                     .
+                      ?e <http://dbpedia.org/ontology/seasonNumber>   ?season
+                    }
+                  ORDER BY DESC(?date)
+                  """)
+
+sparql.setReturnFormat(JSON)
+results = sparql.query().convert()
+
+for result in results["results"]["bindings"]:
+    print('Name: ' + result['e']['value'])
+    print('Season ' + result['season']['value'] + ', Episode ' + result['number']['value'])
+    print('Release date: ' + result['date']['value'])
+    print()

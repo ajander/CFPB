@@ -54,8 +54,9 @@ nlp = en_core_web_sm.load()
 labels_of_interest = ['PERSON','ORG','PRODUCT']
 
 def NER(doc):
-    ents = [(ent,ent.label_) for ent in doc.ents]
-    return [(str(e[0]),e[1]) for e in ents if e[1] == 'ORG' and len(str(e[0]).replace('X','')) > 2]
+    processed_doc = nlp(doc)
+    ents = [(ent,ent.label_) for ent in processed_doc.ents]
+    return [str(e[0]) for e in ents if e[1] == 'ORG' and len(str(e[0]).replace('X','')) > 2]
     
 df['ents'] = df.complaint_what_happened.apply(lambda text: NER(text))
 
@@ -66,7 +67,7 @@ df['ents'] = df.complaint_what_happened.apply(lambda text: NER(text))
 # Train SVM using noun phrase embeddings as input and company as target
 # A row may have more than one inputs (treat each noun phrase as a separate sample)
 
-#%% SPACY NOUN CHUNKS
+#%% SPACY NOUN CHUNKS - NOT USING RIGHT NOW...
 
 doc = nlp(df['complaint_what_happened'].str.replace('X','').iloc[3])
 
@@ -91,9 +92,15 @@ def find_nc(doc):
 # Use textacy, a package built off of spacy?
 # https://github.com/chartbeat-labs/textacy
         
+#%% SENTENCE VECTORIZATION
+
+# How many sentences does a complaint usually have?
+num_sents = df.complaint_what_happened.apply(
+        lambda text: len([s for s in nlp(text).sents]))
+
 #%% SENTENCE VECTORS FROM "A TOUGH TO BEAT BASELINE..."
 
-
+import sentence2vec.py
 
 #%% DOCUMENT VECTORS FROM GENSIM
 

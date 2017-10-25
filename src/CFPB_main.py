@@ -49,6 +49,8 @@ import spacy
 import en_core_web_sm
 nlp = en_core_web_sm.load()
 
+# spacy.en.language_data.STOP_WORDS - how to access?
+
 #%% SPACY NER
 
 labels_of_interest = ['PERSON','ORG','PRODUCT']
@@ -69,19 +71,34 @@ df['ents'] = df.complaint_what_happened.apply(lambda text: NER(text))
 
 #%% SPACY NOUN CHUNKS - NOT USING RIGHT NOW...
 
-doc = nlp(df['complaint_what_happened'].str.replace('X','').iloc[3])
+from nltk import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS as stop 
+import re
 
-# Check:
-# more than one token in chunk
-# replace X with empty string - do this in preprocessing
-# at least one token not in stopword list
-# at least one token with high tfidf score?
+doc = df['complaint_what_happened'].iloc[3]
+
+# Need more preprocessing (what's the best order to do these in?):
+#   * Replace 'X' with empty string - DONE
+#   * Convert to lowercase - DONE
+#   * Remove punctuation
+#   * Remove tokens with only digits
+#   * Stem
+# Do all steps before noun chunking? Or save some until afterwards?
+
+# What if I use NOUNS instead of NOUN CHUNKS? Does that perform better or worse?
         
 def find_nc(doc):
-    for nc in doc.noun_chunks:
+    tokens = []
+    doc = doc.replace('X','').lower()
+    for nc in nlp(doc).noun_chunks:
         if len(nc) > 1 and not all(token.is_stop for token in nc):
-            print(nc.text)
-    return
+            tokens += [w for w in word_tokenize(nc.text) if w not in stop]
+    tokens = [t for t in [re.sub(r'[^a-z]+', '', t) for t in tokens] if len(t)>2]
+    tokens = [WordNetLemmatizer().lemmatize(t) for t in tokens]
+    return tokens
+
+df['nc'] = df['complaint_what_happened'].apply(lambda doc: find_nc(doc))
 
 #%% CREATE A PIPELINE
     
@@ -106,23 +123,23 @@ import sentence2vec.py
 
 import gensim
 from gensim.models import doc2vec
-from nltk import word_tokenize
+
 import time
 
-def preprocess(text):
+def nltk_tokenize(text):
     text = text.lower()
     tokens = word_tokenize(text)
     return tokens
 
 docs = [doc2vec.TaggedDocument(
-        words=preprocess(d), tags=[label]) for d, label in zip(
+        words=nltk_tokenize(d), tags=[label]) for d, label in zip(
                 df['complaint_what_happened'], df['complaint_id'])]
     
 model = doc2vec.Doc2Vec(docs, size = 100, window = 8, min_count = 10, workers = 4)
 v = model.docvecs
 
 # Find similar documents
-new_doc = df.complaint_what_happened[0]
+new_doc = df.complaint_what_happened[1]
 new_vector = model.infer_vector(preprocess(new_doc))
 sims = model.docvecs.most_similar([new_vector])
 

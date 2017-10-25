@@ -106,6 +106,15 @@ import sentence2vec.py
 
 import gensim
 from gensim.models import doc2vec
+from nltk import word_tokenize
+import time
+
+def preprocess(text):
+    start = time.time()
+    text = text.lower()
+    tokens = word_tokenize(text)
+    print("nltk: %0.3f" % (time.time()-start))
+    return tokens
 
 docs = [doc2vec.TaggedDocument(
         words=d.split(), tags=[label]) for d, label in zip(
@@ -114,30 +123,28 @@ docs = [doc2vec.TaggedDocument(
 model = doc2vec.Doc2Vec(docs, size = 100, window = 300, min_count = 1, workers = 4)
 v = model.docvecs
 
-import scipy
-import numpy as np
 
-def sim(vec1,vec2):
-    return 1 - scipy.spatial.distance.cosine(vec1, vec2)
 
-def l2_dist(vec1, vec2):
-    a = np.linalg.norm(vec1)
-    b = np.linalg.norm(vec2)
-    return scipy.spatial.distance.euclidean(a,b)
 
-#%% create distance matrix for comparing and finding smallest & largest distances
-# NEED TO MODIFY CODE HERE - also, normalize each vector first
-    
-from scipy.spatial.distance import pdist, squareform
 
-d = pdist(ncoord)
 
-# pdist just returns the upper triangle of the pairwise distance matrix. to get
-# the whole (20, 20) array we can use squareform:
 
-print(d.shape)
-# (190,)
 
-D2 = squareform(d)
-print(D2.shape)
-# (20, 20)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

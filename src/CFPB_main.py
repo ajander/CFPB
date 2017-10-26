@@ -11,6 +11,7 @@ Date: 2017-10-01
 # Use environment simple_nlp
 
 import pandas as pd
+import numpy as np
 from sodapy import Socrata
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
@@ -101,7 +102,7 @@ def find_nc(doc):
 
 df['nc'] = df['complaint_what_happened'].apply(lambda doc: find_nc(doc))
 
-#%% VECTORIZE THE TOKENS DERIVED FROM NOUN CHUNKS USING ARORA METHOD
+#%% VECTORIZE THE TOKENS DERIVED FROM NOUN CHUNKS USING ARORA METHOD - SKIP THIS FOR NOW
 
 from sentence2vec import *
 
@@ -130,7 +131,7 @@ def nltk_tokenize(text):
     tokens = word_tokenize(text)
     return tokens
 
-df['features'] = df.apply(lambda row: row['nc'] + row['ent_tokens'], axis=1)
+df['features'] = df.apply(lambda row: list(row['nc']) + list(row['ent_tokens']), axis=1)
 
 #input_column = df['complaint_what_happened'].apply(lambda d: nltk_tokenize(d))
 #input_column = df['nc']
@@ -147,13 +148,15 @@ new_doc = df['nc'][2]
 new_vector = model.infer_vector(new_doc)
 sims = model.docvecs.most_similar([new_vector])
 
-#%% K-MEANS CLUSTERING OF DOCUMENT VECTORS
+#%% K-MEANS CLUSTERING OF DOCUMENT VECTORS - SKIP NOW
 
 from sklearn.cluster import KMeans
+from sklearn import preprocessing
 
 n_clusters = 409
 X = np.array(model.docvecs)
-km = KMeans(n_clusters=n_clusters).fit(X)
+X_norm = preprocessing.normalize(X, norm='l2')
+km = KMeans(n_clusters=n_clusters).fit(X_norm)
 
 l = km.labels_
 df['km_labels'] = l
@@ -164,10 +167,24 @@ for name,group in g:
     print(group[['company','product']])
     print()
 
-#%% CLASSIFICATION WITH SVM
+#%% CLASSIFICATION WITH SVM - PRODUCTS
     
+# In 2000-row sample, 409 unique companies and 17 unique products
+    
+from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
 
+# Define data and targets
+X = np.array(model.docvecs)
+X_norm = preprocessing.normalize(X, norm='l2')
+y = np.array(df['product'])
+X_train, X_test, y_train, y_test = train_test_split(X_norm, y, test_size=0.3, random_state=0)
 
+# Train
+clf = SVC()
+clf.fit(X_train, y_train) 
+
+clf.score(X_test, y_test)
 
 
 

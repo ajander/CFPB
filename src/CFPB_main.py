@@ -12,6 +12,10 @@ Date: 2017-10-01
 
 import pandas as pd
 from sodapy import Socrata
+from nltk import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS as stop 
+import re
 
 import os
 entry_point = r'/home/adrienne/Code/PythonProjects/CFPB/src'
@@ -53,14 +57,15 @@ nlp = en_core_web_sm.load()
 
 #%% SPACY NER
 
-labels_of_interest = ['PERSON','ORG','PRODUCT']
-
 def NER(doc):
     processed_doc = nlp(doc)
-    ents = [(ent,ent.label_) for ent in processed_doc.ents]
-    return [str(e[0]) for e in ents if e[1] == 'ORG' and len(str(e[0]).replace('X','')) > 2]
+    ents = [str(ent) for ent in processed_doc.ents if ent.label_ == 'ORG']
+    ents = [e.replace('X','').lower() for e in ents]
+    ent_tokens = [word_tokenize(e) for e in ents]
+    ent_tokens = [e for e in ents if e not in stop and len(e) > 2]
+    return ent_tokens
     
-df['ents'] = df.complaint_what_happened.apply(lambda text: NER(text))
+df['ent_tokens'] = df.complaint_what_happened.apply(lambda text: NER(text))
 
 # Possible action plan:
 # Find relevant entities in each complaint using NER function
@@ -69,12 +74,7 @@ df['ents'] = df.complaint_what_happened.apply(lambda text: NER(text))
 # Train SVM using noun phrase embeddings as input and company as target
 # A row may have more than one inputs (treat each noun phrase as a separate sample)
 
-#%% SPACY NOUN CHUNKS - NOT USING RIGHT NOW...
-
-from nltk import word_tokenize
-from nltk.stem import WordNetLemmatizer
-from sklearn.feature_extraction.stop_words import ENGLISH_STOP_WORDS as stop 
-import re
+#%% SPACY NOUN CHUNKS
 
 doc = df['complaint_what_happened'].iloc[3]
 
@@ -141,7 +141,7 @@ docs = [doc2vec.TaggedDocument(
 model = doc2vec.Doc2Vec(docs, size = 100, window = 8, min_count = 10, workers = 4)
 
 # Find similar documents
-new_doc = df['nc'][1]
+new_doc = df['nc'][2]
 new_vector = model.infer_vector(new_doc)
 sims = model.docvecs.most_similar([new_vector])
 

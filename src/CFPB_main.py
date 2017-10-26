@@ -147,13 +147,22 @@ new_doc = df['nc'][2]
 new_vector = model.infer_vector(new_doc)
 sims = model.docvecs.most_similar([new_vector])
 
+#%% K-MEANS CLUSTERING OF DOCUMENT VECTORS
 
+from sklearn.cluster import KMeans
 
+n_clusters = 409
+X = np.array(model.docvecs)
+km = KMeans(n_clusters=n_clusters).fit(X)
 
+l = km.labels_
+df['km_labels'] = l
 
+g = df.groupby('km_labels')
 
-
-
+for name,group in g:
+    print(group[['company','product']])
+    print()
 
 
 

@@ -61,8 +61,9 @@ def NER(doc):
     processed_doc = nlp(doc)
     ents = [str(ent) for ent in processed_doc.ents if ent.label_ == 'ORG']
     ents = [e.replace('X','').lower() for e in ents]
-    ent_tokens = [word_tokenize(e) for e in ents]
-    ent_tokens = [e for e in ents if e not in stop and len(e) > 2]
+    ent_list = [word_tokenize(e) for e in ents]
+    ent_tokens = [re.sub(r'[^a-z]+', '', t) for l in ent_list for t in l]
+    ent_tokens = [t for t in ent_tokens if t not in stop and len(t) > 2]
     return ent_tokens
     
 df['ent_tokens'] = df.complaint_what_happened.apply(lambda text: NER(text))
@@ -76,7 +77,7 @@ df['ent_tokens'] = df.complaint_what_happened.apply(lambda text: NER(text))
 
 #%% SPACY NOUN CHUNKS
 
-doc = df['complaint_what_happened'].iloc[3]
+doc = df['complaint_what_happened'].iloc[0]
 
 # Need more preprocessing (what's the best order to do these in?):
 #   * Replace 'X' with empty string - DONE
@@ -122,21 +123,22 @@ df['docvec'] = sentence_to_vec(docvec_input.tolist(), embedding_size)
 
 #import gensim
 from gensim.models import doc2vec
-
 import time
 
-#def nltk_tokenize(text):
-#    text = text.lower()
-#    tokens = word_tokenize(text)
-#    return tokens
-#
-#docs = [doc2vec.TaggedDocument(
-#        words=nltk_tokenize(d), tags=[label]) for d, label in zip(
-#                df['complaint_what_happened'], df['complaint_id'])]
-    
+def nltk_tokenize(text):
+    text = text.lower()
+    tokens = word_tokenize(text)
+    return tokens
+
+df['features'] = df.apply(lambda row: row['nc'] + row['ent_tokens'], axis=1)
+
+#input_column = df['complaint_what_happened'].apply(lambda d: nltk_tokenize(d))
+#input_column = df['nc']
+input_column = df['features']
+
 docs = [doc2vec.TaggedDocument(
         words=d, tags=[label]) for d, label in zip(
-                df['nc'], df['complaint_id'])]
+                input_column, df['complaint_id'])]
     
 model = doc2vec.Doc2Vec(docs, size = 100, window = 8, min_count = 10, workers = 4)
 

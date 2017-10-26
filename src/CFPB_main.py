@@ -164,7 +164,8 @@ for name,group in g:
     print(group[['company','product']])
     print()
 
-
+#%% CLASSIFICATION WITH SVM
+    
 
 
 
